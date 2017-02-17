@@ -1,0 +1,18 @@
+extends layout
+
+block content
+	h1= title
+	form#formSubmitUser(name="submituser",method="post",action="/")
+		input#inputUserName(type="text", placeholder="Twitter Username", name="username")
+		br
+		br
+		strong OR
+		br
+		br
+		input#inputUserEmail(type="text", placeholder="Twitter UserID", name="userid")
+		br
+		br
+		button#btnSubmit(type="submit") Submit
+		br
+		p
+		| #{message}
