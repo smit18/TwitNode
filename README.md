@@ -12,8 +12,9 @@ The time(s) when most of the follwers actively post are shown as the result.
 eg.
 ================================================
 Best Time to Tweet for User
-    1:30 PM
-    4:45 PM
+   
+   1:30 PM
+   4:45 PM
 ================================================
 
 
