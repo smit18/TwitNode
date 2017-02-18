@@ -17,10 +17,12 @@ router.post('/', function(req, res) {
 	//Simple Field Validation
 	if (userName== '' && userID == ''){
         res.render('index',{ title: 'TwitSmit Analyser', message: 'Both the fields are empty. Please fill one.'});
+		return;
 	}
 	else 
 	if (userName!= '' && userID != ''){
         res.render('index',{ title: 'TwitSmit Analyser', message: 'Please fill only one field'});
+		return;
 	}
 
 		
@@ -31,103 +33,156 @@ router.post('/', function(req, res) {
         access_token_secret: process.env.ACCESS_TOKEN_SECRET
     });
 	
-    var tweet = '';
-    var user_last_post = '';
-    var window = 15;
-    var time_dict = {};
+    
+    var window = 15; // Window of 15 minutes
     var count = 0;
+	var user_last_post = '';
+	var follow_count = 0;
+	var flag = 0;
     var arrays = [], size = 100; // Follower limit for single API call
+	var user_id_array = [];
+	var v_time = '';
+	var v_date = '';
+	var time_dict = {};
 	
 	//Get data by UserName
 	if (userName!= ''){
 		client.get('users/lookup', { screen_name : userName}, function (err, data, response){
-		
-		//To check user exists
-		if (data[0] == undefined){
-			res.render('index',{ title: 'TwitSmit Analyser', message: 'Username/ID does not exit'});
-		}
-		});
-		
-		//Get last tweet of the user
-		client.get('statuses/user_timeline', {  screen_name : userName , count: 1}, function(error, data, response) {
-			
-			if (data[0] != undefined){
-			user_last_post = parseTwitterDate(data[0].created_at);
-	
-			//Get Followers information
-			client.get('followers/ids', { screen_name : userName }, function getData(err, data, response) {
-				
-				
-				if (data[0] != undefined){
-					// Fetch Followers List
-					var user_id_array = data.ids; 
-					var v_time = '';
-					var v_date = '';
-					
-					// Get list of 100 followers at a time 
-					while (user_id_array.length > 0)
-						arrays.push(user_id_array.splice(0, size));
-		
-					for (var j = 0; j < arrays.length; j++) {
-		
-						var user_id_param = arrays[j].join();
-		
-						client.get('users/lookup', { user_id: user_id_param }, getUserTweets);
-		
-					}
-		
-					// Go to next cursor if exists
-					if (data['next_cursor'] > 0) client.get('followers/ids', { screen_name : userName, cursor: data['next_cursor']}, getData); 
-				}
-			})
-	
-		}});
-		}
-	else //Get data by UserID
-		{		
-		client.get('users/lookup', { user_id : userID }, function (err, data, response){
+
 			//To check user exists
-			if (data[0] == undefined){
+			if (isEmpty(data[0])){
+	
 				res.render('index',{ title: 'TwitSmit Analyser', message: 'Username/ID does not exit'});
+				return;
 			}
-		});
-		
-		//Get last tweet of the user
-		client.get('statuses/user_timeline', { user_id : userID , count: 1}, function(error, data, response) {
 			
-			if (data[0] != undefined){
-			user_last_post = parseTwitterDate(data[0].created_at);
-			userName = data[0].name;
-		
 			
-			//Get Followers information
-			client.get('followers/ids', { user_id : userID }, function getData(err, data, response) {
-				
-				if (data[0] != undefined){
+			//Get last tweet of the user
+			client.get('statuses/user_timeline', {  screen_name : userName , count: 1}, function(error, data, response) {
+	
+				if (!isEmpty(data[0])){
 					
-					// Fetch Followers List
-					var user_id_array = data.ids; 
-					var v_time = '';
-					var v_date = '';
+					user_last_post = parseTwitterDate(data[0].created_at);
+					follow_count = data[0].user.followers_count;
 					
-					// Get list of 100 followers at a time 
-					while (user_id_array.length > 0)
-						arrays.push(user_id_array.splice(0, size));
-					
-					for (var j = 0; j < arrays.length; j++) {
-					
-						var user_id_param = arrays[j].join();
-					
-						client.get('users/lookup', { user_id: user_id_param }, getUserTweets);
-					
+					if(follow_count == 0){
+						res.render('noresults', { title: 'No Result'});
+						return;
 					}
 					
-					// Go to next cursor if exists
-					if (data['next_cursor'] > 0) client.get('followers/ids', { user_id : userID, cursor: data['next_cursor']}, getData); 
-				}
-			})
+					//Get Followers information
+					var j = 0; 
+					client.get('followers/ids', { screen_name : userName }, function getData(err, data, response) {
+						
+						if (!isEmpty(data)){
+							
+							// Fetch Followers List
+							
+							user_id_array = data.ids; 
+							
+							// Set flag for last iteration
+							if(!(data['next_cursor'] > 0))
+								flag=1;
 	
-		}});
+							if(user_id_array == undefined)
+								user_id_array=[];
+															
+							
+							// Get list of 100 followers at a time 
+							while (user_id_array.length > 0)
+								arrays.push(user_id_array.splice(0, size));
+					
+							for (j=j;j < arrays.length; j++) {
+											
+								var user_id_param = arrays[j].join();
+								client.get('users/lookup', { user_id: user_id_param }, getUserTweets);
+					
+							}
+													
+							// Go to next cursor if exists
+							if (data['next_cursor'] > 0) client.get('followers/ids', { screen_name : userName, cursor: data['next_cursor']}, getData); 
+						}
+						else 
+							return;
+					
+					});
+		
+				}
+				else
+				{
+					res.render('noresults', { title: 'No Result'});
+				}
+			});
+		});
+	}
+	else //Get data by UserID
+	{
+		client.get('users/lookup', { user_id : userID }, function (err, data, response){
+			
+			//To check user exists
+			if (isEmpty(data[0])){
+				res.render('index',{ title: 'TwitSmit Analyser', message: 'Username/ID does not exit'});
+				return;
+			}
+			
+			
+			//Get last tweet of the user
+			client.get('statuses/user_timeline', {  user_id : userID , count: 1}, function(error, data, response) {
+				
+				if (!isEmpty(data[0])){
+					
+					user_last_post = parseTwitterDate(data[0].created_at);
+					follow_count = data[0].user.followers_count;
+					
+					if(follow_count == 0){
+						res.render('noresults', { title: 'No Result'});
+						return;
+					}
+					
+					//Get Followers information
+					var j = 0; 
+					client.get('followers/ids', { user_id : userID }, function getData(err, data, response) {
+						
+						if (!isEmpty(data)){
+							
+							// Fetch Followers List
+							
+							user_id_array = data.ids; 
+							
+							// Set flag for last iteration
+							if(!(data['next_cursor'] > 0))
+								flag=1;
+	
+							if(user_id_array == undefined)
+								user_id_array=[];
+															
+							
+							// Get list of 100 followers at a time 
+							while (user_id_array.length > 0)
+								arrays.push(user_id_array.splice(0, size));
+					
+							for (j=j;j < arrays.length; j++) {
+											
+								var user_id_param = arrays[j].join();
+								client.get('users/lookup', { user_id: user_id_param }, getUserTweets);
+					
+							}
+													
+							// Go to next cursor if exists
+							if (data['next_cursor'] > 0) client.get('followers/ids', { user_id : userID, cursor: data['next_cursor']}, getData); 
+						}
+						else 
+							return;
+					
+					});
+		
+				}
+				else
+				{
+					res.render('noresults', { title: 'No Result'});
+				}
+			});
+		});
 	}
 	
 	function parseTwitterDate(text) {
@@ -150,9 +205,9 @@ router.post('/', function(req, res) {
 		//Set Timestamps and counts as key-value pairs
 		var times = time_dict;
         count++;
-		if (tweets != null ){
+		
+		if (!isEmpty(tweets)){
 			for (var i = 0; i < tweets.length; i++) {
-	
 	
 				if (tweets[i].status != null) {
 					var v_time = parseTwitterTime(tweets[i].status.created_at);
@@ -174,11 +229,11 @@ router.post('/', function(req, res) {
         time_dict = times;
 		
 		//Last Iteration
-        if (count == arrays.length) {
+        if ( flag==1 && count == arrays.length ) {
+			
 			//Get the time with most number of tweets
             
 			keys = Object.keys(time_dict), largest = Math.max.apply(null, keys.map(x => time_dict[x]))
-
             result = keys.reduce((result, key) => {
                 if (time_dict[key] === largest) {
                     result.push(key);
@@ -186,13 +241,29 @@ router.post('/', function(req, res) {
                 return result;
             }, [])
 			
-			if (result === undefined || result.length == 0)
+			if (isEmpty(result))
 				res.render('noresults', { title: 'No Result'});
 			else
 				res.render('checktime', { title: 'Result', tweets: result});
         }
 
     }
+	
+	function isEmpty(obj) {
 
+		// null and undefined are "empty"
+		if (obj == null) return true;	
+				
+		// If it has a length property with a non-zero value
+		if (obj.length > 0)    return false;
+		if (obj.length == 0)  return true;
+		
+		if (typeof obj != "object") return true;
+	
+		
+
+		return false;
+	}
+return;
 });
 module.exports = router;
