@@ -9,12 +9,16 @@ The result will be shown as 15 minute interval time. (i.e 4.00 AM, 4.15 AM, 12:3
 The calculation for the time is based on the the user's last post by which the activities of user's followers are tracked.
 The time(s) when most of the follwers actively post are shown as the result.
 
+
+
 eg.
+
 ================================================
 Best Time to Tweet for User
    
-   1:30 PM
-   4:45 PM
+	1:30 PM
+	4:45 PM
+	
 ================================================
 
 
